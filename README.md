@@ -45,7 +45,14 @@ git clone https://github.com/dme-2/background-remover.git
 cd background-remover
 ```
 
-2. Install dependencies
+2. Copy environment files
+```bash
+cp frontend/.env.example frontend/.env
+cp backend/.env.example backend/.env
+cp image-processor/.env.example image-processor/.env
+```
+
+3. Install dependencies
 ```bash
 # Frontend
 cd frontend
@@ -60,7 +67,7 @@ cd ../image-processor
 pip install -r requirements.txt
 ```
 
-3. Run with Docker
+4. Run with Docker
 ```bash
 docker-compose up -d
 ```
