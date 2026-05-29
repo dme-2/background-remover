@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: background-remover-db
+    environment:
+      POSTGRES_DB: background_remover
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: background-remover-cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: background-remover-api
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/background_remover
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your_jwt_secret_key_change_in_production
+      IMAGE_PROCESSOR_URL: http://image-processor:8000
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev
+
+  image-processor:
+    build:
+      context: ./image-processor
+      dockerfile: Dockerfile
+    container_name: background-remover-processor
+    environment:
+      PORT: 8000
+      WORKERS: 4
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./image-processor:/app
+    command: python app.py
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: background-remover-web
+    environment:
+      REACT_APP_API_URL: http://localhost:5000/api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: background-remover-network
